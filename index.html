@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diff Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: workbench — toolbar, two editor panes side by side, full-width diff below with a sticky change bar */
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --surface-2:#eef1f6; --line:#d8dde7; --line-strong:#c3cad8;
+  --fg:#1a1f2b; --muted:#5f687a; --accent:#2b4fd6; --accent-fg:#ffffff; --accent-soft:#e3e9fd;
+  --add-bg:#e7f6ec; --add-ln:#d3eedc; --add-strong:#a9e0bb; --add-fg:#126a3b;
+  --del-bg:#fdeded; --del-ln:#f8d9d9; --del-strong:#f4b9b9; --del-fg:#a52121;
+  --ok:#17733f; --ok-bg:#e3f3e9; --err:#c02626; --err-bg:#fde9e9; --warn:#93600a; --warn-bg:#fdf3dc;
+  --hatch:#dfe3eb; --fold-bg:#eaf0fb;
+  --tk-key:#7a3e9d; --tk-str:#0f63a1; --tk-num:#a65406; --tk-kw:#a1306a; --tk-com:#7a8395; --tk-tag:#2449b8; --tk-fn:#4a54a8;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10131a; --surface:#171b24; --surface-2:#1d222d; --line:#2a3141; --line-strong:#3a4356;
+  --fg:#e0e4ee; --muted:#8e97aa; --accent:#8098ff; --accent-fg:#0f1320; --accent-soft:#232c4d;
+  --add-bg:#132a1d; --add-ln:#183522; --add-strong:#22603a; --add-fg:#74d99d;
+  --del-bg:#2e1517; --del-ln:#3a1a1d; --del-strong:#6e2429; --del-fg:#ff9393;
+  --ok:#74d99d; --ok-bg:#15301f; --err:#ff8a8a; --err-bg:#3a1719; --warn:#f2c46b; --warn-bg:#33270f;
+  --hatch:#252b38; --fold-bg:#1b2236;
+  --tk-key:#d5a6ff; --tk-str:#82bcff; --tk-num:#f2b56b; --tk-kw:#ff8cc4; --tk-com:#79839a; --tk-tag:#8db0ff; --tk-fn:#b8bfff;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#10131a; --surface:#171b24; --surface-2:#1d222d; --line:#2a3141; --line-strong:#3a4356;
+  --fg:#e0e4ee; --muted:#8e97aa; --accent:#8098ff; --accent-fg:#0f1320; --accent-soft:#232c4d;
+  --add-bg:#132a1d; --add-ln:#183522; --add-strong:#22603a; --add-fg:#74d99d;
+  --del-bg:#2e1517; --del-ln:#3a1a1d; --del-strong:#6e2429; --del-fg:#ff9393;
+  --ok:#74d99d; --ok-bg:#15301f; --err:#ff8a8a; --err-bg:#3a1719; --warn:#f2c46b; --warn-bg:#33270f;
+  --hatch:#252b38; --fold-bg:#1b2236;
+  --tk-key:#d5a6ff; --tk-str:#82bcff; --tk-num:#f2b56b; --tk-kw:#ff8cc4; --tk-com:#79839a; --tk-tag:#8db0ff; --tk-fn:#b8bfff;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans)}
+.wrap{max-width:1500px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;display:flex;flex-direction:column;gap:16px}
+@media (max-width:600px){.wrap{padding-inline:16px}}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px 24px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:36px;height:36px;border-radius:8px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:500 20px/1 var(--mono);flex:none}
+.brand h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.brand p{margin:0;color:var(--muted);font-size:13px}
+.keys{display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12.5px}
+kbd{font:500 11px/1 var(--mono);border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:4px;padding:3px 5px;background:var(--surface);color:var(--fg)}
+
+/* buttons */
+.btn{border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;line-height:1.3;transition:background .12s,border-color .12s}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:4px 8px}
+.btn.ghost:hover{background:var(--surface-2);color:var(--fg)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* toolbar */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.field{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.field select{border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);padding:5px 8px;font-size:13px}
+.detected{font:500 11.5px/1 var(--mono);color:var(--accent);background:var(--accent-soft);padding:4px 7px;border-radius:4px}
+.check{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;user-select:none}
+.check input{accent-color:var(--accent);width:15px;height:15px;margin:0}
+.tsep{width:1px;align-self:stretch;background:var(--line)}
+.tactions{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+@media (max-width:760px){.tsep{display:none}.tactions{margin-left:0}}
+
+/* panes */
+.inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.inputs{grid-template-columns:minmax(0,1fr)}}
+.pane{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.phead{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 12px;flex-wrap:wrap}
+.pname{display:flex;align-items:center;gap:8px;margin-right:auto}
+.pname h3{margin:0;font-size:14px;font-weight:600}
+.side{font:600 11px/1 var(--mono);width:20px;height:20px;border-radius:4px;display:grid;place-items:center}
+.side.a{background:var(--del-ln);color:var(--del-fg)}
+.side.b{background:var(--add-ln);color:var(--add-fg)}
+.tag{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border:1px dashed var(--line-strong);border-radius:4px;padding:1px 6px}
+.chip{font-size:12px;font-weight:500;border-radius:999px;padding:2px 9px 2px 8px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.bad{background:var(--err-bg);color:var(--err)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.idle{background:var(--surface-2);color:var(--muted)}
+.pact{display:flex;gap:2px;flex-wrap:wrap}
+.editor{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);height:22rem;min-height:9rem;resize:vertical;overflow:hidden;border-top:1px solid var(--line);background:var(--surface)}
+.editor.drop{outline:2px dashed var(--accent);outline-offset:-6px}
+.gutter{margin:0;padding:10px 8px 40px 12px;min-width:3.2rem;text-align:right;color:var(--muted);font:12.5px/20px var(--mono);white-space:pre;overflow:hidden;user-select:none;background:var(--surface-2);border-right:1px solid var(--line);font-variant-numeric:tabular-nums}
+.gutter b{display:inline-block;width:100%;font-weight:500;color:var(--err);background:var(--err-bg);box-shadow:-12px 0 0 var(--err-bg),8px 0 0 var(--err-bg)}
+.band{position:absolute;right:0;height:20px;background:var(--err-bg);pointer-events:none;z-index:0;border-left:2px solid var(--err)}
+.editor textarea{position:relative;z-index:1;margin:0;border:0;outline:none;resize:none;width:100%;height:100%;padding:10px 12px;font:12.5px/20px var(--mono);background:transparent;color:var(--fg);white-space:pre;overflow:auto;tab-size:2}
+.editor textarea::placeholder{color:var(--muted)}
+.perr{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-top:1px solid var(--line);background:var(--err-bg);color:var(--err);font-size:13px}
+.perr.warn{background:var(--warn-bg);color:var(--warn)}
+.perr svg{flex:none;margin-top:2px}
+.perr div{min-width:0;flex:1}
+.perr strong{display:block;font-weight:600}
+.perr p{margin:2px 0 0;color:var(--fg);font-family:var(--mono);font-size:12px;overflow-wrap:anywhere}
+.perr .btn{border-color:currentColor;background:transparent;color:inherit;padding:4px 10px;flex:none}
+
+/* result */
+.result{background:var(--surface);border:1px solid var(--line);border-radius:10px;min-width:0}
+.rbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line);border-radius:10px 10px 0 0}
+.rtitle{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-right:auto}
+.rtitle h2{margin:0;font-size:15px;font-weight:600}
+.stats{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.pill{font:500 12px/1 var(--mono);padding:4px 7px;border-radius:4px;font-variant-numeric:tabular-nums}
+.pill.add{background:var(--add-bg);color:var(--add-fg)}
+.pill.del{background:var(--del-bg);color:var(--del-fg)}
+.pill.same{background:var(--ok-bg);color:var(--ok);font-family:var(--sans)}
+.rctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 11px;font-size:12.5px;font-weight:500;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.nav{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
+.nav .btn{padding:4px 7px;display:grid;place-items:center}
+.nav span{min-width:4.6rem;text-align:center;font-variant-numeric:tabular-nums}
+.hint{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;background:var(--warn-bg);color:var(--warn);font-size:13px;border-bottom:1px solid var(--line)}
+.diffwrap{overflow-x:auto;border-radius:0 0 10px 10px}
+.empty{padding:48px 16px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--fg);font-size:15px;margin-bottom:4px}
+table.d{width:100%;border-collapse:collapse;table-layout:fixed;font:12.5px/20px var(--mono)}
+.nowrap table.d{table-layout:auto;width:max-content;min-width:100%}
+table.d col.ln{width:3.4rem}
+table.d col.sg{width:1.4rem}
+table.d td{padding:0;vertical-align:top}
+td.ln{text-align:right;padding:0 8px 0 4px;color:var(--muted);user-select:none;font-variant-numeric:tabular-nums}
+td.sg{text-align:center;user-select:none;font-weight:500}
+td.cd{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;padding:0 14px 0 2px}
+.nowrap td.cd{white-space:pre}
+table.split td:nth-child(4){border-left:1px solid var(--line)}
+td.del{background:var(--del-bg)} td.ln.del{background:var(--del-ln);color:var(--del-fg)} td.sg.del{color:var(--del-fg)}
+td.add{background:var(--add-bg)} td.ln.add{background:var(--add-ln);color:var(--add-fg)} td.sg.add{color:var(--add-fg)}
+td.emp{background:repeating-linear-gradient(-45deg,var(--hatch) 0 1px,transparent 1px 7px),var(--surface)}
+mark.rm{background:var(--del-strong);color:inherit;border-radius:2px}
+mark.ins{background:var(--add-strong);color:inherit;border-radius:2px}
+tr.cur>td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+tr.fold td{background:var(--fold-bg);border-block:1px solid var(--line)}
+tr.fold button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:3px 14px;font:12px/20px var(--mono);color:var(--accent)}
+tr.fold button:hover{text-decoration:underline}
+tr.fold button span{color:var(--muted)}
+/* syntax */
+.hljs-attr,.hljs-property,.hljs-attribute{color:var(--tk-key)}
+.hljs-string,.hljs-regexp,.hljs-symbol{color:var(--tk-str)}
+.hljs-number,.hljs-literal{color:var(--tk-num)}
+.hljs-keyword,.hljs-selector-tag,.hljs-built_in,.hljs-type,.hljs-meta .hljs-keyword{color:var(--tk-kw)}
+.hljs-comment,.hljs-quote,.hljs-meta{color:var(--tk-com);font-style:italic}
+.hljs-tag,.hljs-name,.hljs-selector-class,.hljs-selector-id,.hljs-section,.hljs-bullet{color:var(--tk-tag)}
+.hljs-title,.hljs-function .hljs-title,.hljs-title.function_,.hljs-variable,.hljs-template-variable{color:var(--tk-fn)}
+.hljs-strong{font-weight:600}.hljs-emphasis{font-style:italic}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,12px);opacity:0;pointer-events:none;background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:13px;max-width:min(90vw,520px);transition:opacity .18s,transform .18s;z-index:20}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:var(--err);color:var(--surface)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+body{margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">±</div>
+      <div>
+        <h1>Diff Bench</h1>
+        <p>Paste two versions of code or an API response, beautify them, and see every change line by line.</p>
+      </div>
+    </div>
+    <div class="keys">
+      <span><kbd>F7</kbd> next change</span>
+      <span><kbd>Shift</kbd> <kbd>F7</kbd> previous</span>
+      <span><kbd>Shift</kbd> <kbd>Alt</kbd> <kbd>F</kbd> beautify pane</span>
+      <button class="btn ghost" id="loadExample">Load example</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <label class="field">Language
+      <select id="lang">
+        <option value="auto">Auto-detect</option>
+        <option value="json">JSON</option>
+        <option value="javascript">JavaScript</option>
+        <option value="typescript">TypeScript</option>
+        <option value="html">HTML</option>
+        <option value="xml">XML</option>
+        <option value="css">CSS</option>
+        <option value="scss">SCSS</option>
+        <option value="yaml">YAML</option>
+        <option value="markdown">Markdown</option>
+        <option value="plaintext">Plain text</option>
+      </select>
+    </label>
+    <span class="detected" id="detected" hidden></span>
+    <label class="field">Indent
+      <select id="indent">
+        <option value="2">2 spaces</option>
+        <option value="4">4 spaces</option>
+        <option value="tab">Tabs</option>
+      </select>
+    </label>
+    <span class="tsep"></span>
+    <label class="check"><input type="checkbox" id="sortKeys"> Sort JSON keys on beautify</label>
+    <label class="check"><input type="checkbox" id="ignoreWs"> Ignore whitespace</label>
+    <div class="tactions">
+      <button class="btn" id="swap">Swap sides</button>
+      <button class="btn primary" id="beautifyBoth">Beautify both</button>
+    </div>
+  </div>
+
+  <section class="inputs">
+    <article class="pane" id="pane-a">
+      <div class="phead">
+        <div class="pname"><span class="side a">A</span><h3>Original</h3><span class="tag" id="ex-a" hidden>Example</span></div>
+        <span class="chip idle" id="chip-a">Empty</span>
+        <div class="pact">
+          <button class="btn ghost" data-act="beautify" data-p="a">Beautify</button>
+          <button class="btn ghost" data-act="open" data-p="a">Open file</button>
+          <button class="btn ghost" data-act="copy" data-p="a">Copy</button>
+          <button class="btn ghost" data-act="clear" data-p="a">Clear</button>
+        </div>
+      </div>
+      <div class="editor" id="ed-a">
+        <pre class="gutter" id="gut-a" aria-hidden="true">1</pre>
+        <div class="band" id="band-a" hidden></div>
+        <textarea id="ta-a" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off" aria-label="Original code" placeholder="Paste the original version here, or drop a file"></textarea>
+      </div>
+      <div class="perr" id="err-a" role="alert" hidden></div>
+      <input type="file" id="file-a" hidden>
+    </article>
+
+    <article class="pane" id="pane-b">
+      <div class="phead">
+        <div class="pname"><span class="side b">B</span><h3>Modified</h3><span class="tag" id="ex-b" hidden>Example</span></div>
+        <span class="chip idle" id="chip-b">Empty</span>
+        <div class="pact">
+          <button class="btn ghost" data-act="beautify" data-p="b">Beautify</button>
+          <button class="btn ghost" data-act="open" data-p="b">Open file</button>
+          <button class="btn ghost" data-act="copy" data-p="b">Copy</button>
+          <button class="btn ghost" data-act="clear" data-p="b">Clear</button>
+        </div>
+      </div>
+      <div class="editor" id="ed-b">
+        <pre class="gutter" id="gut-b" aria-hidden="true">1</pre>
+        <div class="band" id="band-b" hidden></div>
+        <textarea id="ta-b" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off" aria-label="Modified code" placeholder="Paste the version to compare against, or drop a file"></textarea>
+      </div>
+      <div class="perr" id="err-b" role="alert" hidden></div>
+      <input type="file" id="file-b" hidden>
+    </article>
+  </section>
+
+  <section class="result" aria-label="Differences">
+    <div class="rbar">
+      <div class="rtitle"><h2>Differences</h2><div class="stats" id="stats"></div></div>
+      <div class="rctl">
+        <div class="seg" role="group" aria-label="Diff layout">
+          <button id="vSplit" aria-pressed="true">Side by side</button>
+          <button id="vInline" aria-pressed="false">Inline</button>
+        </div>
+        <label class="check"><input type="checkbox" id="wrap" checked> Wrap lines</label>
+        <div class="nav">
+          <button class="btn" id="prev" title="Previous change (Shift+F7)" aria-label="Previous change"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+          <span id="navpos">–</span>
+          <button class="btn" id="next" title="Next change (F7)" aria-label="Next change"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="hint" id="hint" hidden></div>
+    <div class="diffwrap" id="diff"></div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const LH = 20, PADT = 10, CONTEXT = 3;
+const LABEL = {json:'JSON',javascript:'JavaScript',typescript:'TypeScript',html:'HTML',xml:'XML',css:'CSS',scss:'SCSS',yaml:'YAML',markdown:'Markdown',plaintext:'Plain text'};
+const HL = {json:'json',javascript:'javascript',typescript:'typescript',html:'xml',xml:'xml',css:'css',scss:'scss',yaml:'yaml',markdown:'markdown'};
+const PJS = 'https://cdn.jsdelivr.net/npm/prettier@3.3.3/';
+const PLUG = {javascript:['babel','estree'],typescript:['typescript','estree'],css:['postcss'],scss:['postcss'],html:['html','babel','estree','postcss'],yaml:['yaml'],markdown:['markdown']};
+const PARSER = {javascript:'babel',typescript:'typescript',css:'css',scss:'scss',html:'html',yaml:'yaml',markdown:'markdown'};
+const STORE = 'diffbench.v1';
+
+const state = {lang:'auto',indent:'2',ignoreWs:false,sortKeys:false,view:innerWidth<720?'inline':'split',wrap:true,expanded:new Set(),cur:-1,count:0,lastLang:null,example:false};
+const P = {};
+['a','b'].forEach(k => P[k] = {k, name:k==='a'?'Original':'Modified', ta:$('#ta-'+k), gut:$('#gut-'+k), band:$('#band-'+k), chip:$('#chip-'+k), err:$('#err-'+k), file:$('#file-'+k), ed:$('#ed-'+k), ex:$('#ex-'+k), res:{status:'empty'}, seq:0, lines:-1, errLine:null, tabOut:false, vt:0});
+
+const esc = s => s.replace(/[&<>]/g, c => c==='&'?'&amp;':c==='<'?'&lt;':'&gt;');
+const ind = () => state.indent==='tab' ? '\t' : ' '.repeat(+state.indent);
+function lineCol(src, pos){ pos = Math.max(0, Math.min(pos ?? src.length, src.length)); let line=1, last=-1; for(let i=0;i<pos;i++) if(src.charCodeAt(i)===10){line++; last=i;} return {line, col:pos-last}; }
+
+/* ---------- strict JSON parser (keeps raw numbers, reports line/column) ---------- */
+function parseJSON(src){
+  let i = 0; const n = src.length;
+  const fail = (msg, pos=i) => { const e = new Error(msg); e.pos = pos; throw e; };
+  const where = pos => 'line ' + lineCol(src,pos).line;
+  function ws(){
+    for(;;){
+      const c = src[i];
+      if(c===' '||c==='\t'||c==='\n'||c==='\r'||(c==='﻿'&&i===0)){ i++; continue; }
+      if(c==='/' && (src[i+1]==='/'||src[i+1]==='*')) fail('Comments are not allowed in JSON');
+      return;
+    }
+  }
+  function str(){
+    const start = i; i++;
+    for(;;){
+      const c = src[i];
+      if(c===undefined) fail('Unterminated string: missing closing "', start);
+      if(c==='"'){ i++; return src.slice(start, i); }
+      if(c==='\\'){
+        const e = src[i+1];
+        if(e!==undefined && '"\\/bfnrt'.includes(e)) i += 2;
+        else if(e==='u'){ if(!/^[0-9a-fA-F]{4}$/.test(src.substr(i+2,4))) fail('Invalid \\u escape: expected 4 hex digits'); i += 6; }
+        else fail('Invalid escape sequence \\' + (e===undefined?'':e));
+      } else if(c==='\n') fail('Line break inside a string. Close the string or write \\n instead');
+      else if(c < ' ') fail('Control characters inside strings must be escaped');
+      else i++;
+    }
+  }
+  function num(){
+    const start = i, re = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y; re.lastIndex = i;
+    const m = re.exec(src);
+    if(!m) fail(src[i]==='-' ? 'Invalid number: expected a digit after "-"' : 'Invalid number');
+    i += m[0].length;
+    const nx = src[i] || '';
+    if(/\d/.test(nx) && /^-?0$/.test(m[0])) fail('Numbers cannot have leading zeros', start);
+    if(/[\d.eE]/.test(nx)) fail('Invalid number format', start);
+    return m[0];
+  }
+  function value(){
+    ws();
+    if(i>=n) fail('Unexpected end of input: a value was expected');
+    const c = src[i];
+    if(c==='{') return obj();
+    if(c==='[') return arr();
+    if(c==='"') return {t:'lit', raw:str()};
+    if(c==="'") fail('Strings must use double quotes (") in JSON');
+    if(c==='-'||(c>='0'&&c<='9')) return {t:'lit', raw:num()};
+    for(const w of ['true','false','null']) if(src.startsWith(w,i)){ i += w.length; return {t:'lit', raw:w}; }
+    if(/[A-Za-z_$]/.test(c)){ const w = /^[A-Za-z_$][\w$]*/.exec(src.slice(i,i+40))[0]; fail(`Unexpected word "${w}". Values must be a "string", number, true, false, null, object or array`); }
+    if(c==='}'||c===']') fail(`Unexpected "${c}": a value was expected`);
+    fail(`Unexpected character "${c}"`);
+  }
+  function obj(){
+    const open = i; i++; const props = []; ws();
+    if(src[i]==='}'){ i++; return {t:'obj', props}; }
+    for(;;){
+      ws();
+      if(i>=n) fail(`Unexpected end of input: the object opened on ${where(open)} is never closed`);
+      const c = src[i];
+      if(c!=='"'){
+        if(c==="'") fail('Property names must use double quotes (") in JSON');
+        if(/[A-Za-z_$]/.test(c)) fail('Property names must be wrapped in double quotes');
+        fail(`Expected a property name in double quotes, found "${c}"`);
+      }
+      const key = str(); ws();
+      if(src[i]!==':') fail(i>=n ? 'Unexpected end of input: expected ":"' : `Expected ":" after property name ${key}`);
+      i++;
+      const v = value(); props.push([key, v]); ws();
+      if(src[i]===','){ const cp = i; i++; ws(); if(src[i]==='}') fail('Trailing comma is not allowed in JSON', cp); continue; }
+      if(src[i]==='}'){ i++; return {t:'obj', props}; }
+      if(i>=n) fail(`Unexpected end of input: the object opened on ${where(open)} is never closed`);
+      if(src[i]==='"') fail('Missing comma between properties');
+      fail('Expected "," or "}" after property value');
+    }
+  }
+  function arr(){
+    const open = i; i++; const items = []; ws();
+    if(src[i]===']'){ i++; return {t:'arr', items}; }
+    for(;;){
+      items.push(value()); ws();
+      if(src[i]===','){ const cp = i; i++; ws(); if(src[i]===']') fail('Trailing comma is not allowed in JSON', cp); continue; }
+      if(src[i]===']'){ i++; return {t:'arr', items}; }
+      if(i>=n) fail(`Unexpected end of input: the array opened on ${where(open)} is never closed`);
+      if(src[i]==='}') fail('Expected "," or "]" but found "}". Check your brackets');
+      fail('Missing comma between array items');
+    }
+  }
+  const v = value(); ws();
+  if(i<n) fail('Unexpected content after the end of the JSON value');
+  return v;
+}
+function printJSON(node, I, sort, lvl=0){
+  if(node.t==='lit') return node.raw;
+  const pad = I.repeat(lvl+1), end = I.repeat(lvl);
+  if(node.t==='arr'){
+    if(!node.items.length) return '[]';
+    return '[\n' + node.items.map(v => pad + printJSON(v,I,sort,lvl+1)).join(',\n') + '\n' + end + ']';
+  }
+  let props = node.props;
+  if(sort) props = [...props].sort((a,b) => a[0]<b[0]?-1:a[0]>b[0]?1:0);
+  if(!props.length) return '{}';
+  return '{\n' + props.map(([k,v]) => pad + k + ': ' + printJSON(v,I,sort,lvl+1)).join(',\n') + '\n' + end + '}';
+}
+
+/* ---------- XML ---------- */
+function checkXML(src){
+  const doc = new DOMParser().parseFromString(src, 'application/xml');
+  const pe = doc.getElementsByTagName('parsererror')[0];
+  if(!pe) return null;
+  const txt = pe.textContent.replace(/Below is a rendering[\s\S]*$/,'');
+  let m = /line (\d+) at column (\d+):\s*([^\n]+)/i.exec(txt);
+  if(m) return {line:+m[1], col:+m[2], msg:m[3].trim()};
+  m = /XML Parsing Error:\s*([^\n]+)[\s\S]*?Line Number (\d+), Column (\d+)/i.exec(txt);
+  if(m) return {line:+m[2], col:+m[3], msg:m[1].trim()};
+  return {line:null, col:null, msg:(txt.split('\n').find(s => s.trim()) || 'Invalid XML').trim()};
+}
+function formatXML(src, I){
+  const toks = src.match(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<![^>]*>|<\/?[^>]+>|[^<]+/g) || [];
+  const out = []; let lvl = 0; const pad = () => I.repeat(Math.max(0,lvl));
+  for(let k=0;k<toks.length;k++){
+    const t = toks[k];
+    if(t.startsWith('</')){ lvl--; out.push(pad()+t.trim()); }
+    else if(/^<[A-Za-z_]/.test(t) && !t.endsWith('/>')){
+      const a = toks[k+1], b = toks[k+2];
+      if(a!==undefined && !a.startsWith('<') && b && b.startsWith('</')){ out.push(pad()+t+a.trim()+b); k+=2; }
+      else if(a && a.startsWith('</')){ out.push(pad()+t+a); k++; }
+      else { out.push(pad()+t); lvl++; }
+    }
+    else if(!t.startsWith('<')){ const s = t.trim(); if(s) out.push(pad()+s); }
+    else out.push(pad()+t);
+  }
+  return out.join('\n');
+}
+
+/* ---------- Prettier (loaded on demand) ---------- */
+const loaded = {};
+function loadScript(url){
+  return loaded[url] || (loaded[url] = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = url; s.onload = res;
+    s.onerror = () => { delete loaded[url]; const e = new Error('Could not load the checker for this language. Check your connection and try again.'); e.isLoadError = true; rej(e); };
+    document.head.appendChild(s);
+  }));
+}
+async function prettierFormat(text, lang){
+  await loadScript(PJS+'standalone.js');
+  await Promise.all(PLUG[lang].map(p => loadScript(PJS+'plugins/'+p+'.js')));
+  const plugins = PLUG[lang].map(p => window.prettierPlugins[p]);
+  return window.prettier.format(text, {parser:PARSER[lang], plugins, tabWidth:state.indent==='tab'?2:+state.indent, useTabs:state.indent==='tab', printWidth:100});
+}
+
+/* ---------- validation ---------- */
+async function check(text, lang){
+  if(!text.trim()) return {status:'empty'};
+  if(lang==='json'){
+    try { return {status:'ok', ast:parseJSON(text)}; }
+    catch(e){ const lc = lineCol(text, e.pos); return {status:'error', msg:e.message, line:lc.line, col:lc.col}; }
+  }
+  if(lang==='xml'){ const r = checkXML(text); return r ? {status:'error', ...r} : {status:'ok'}; }
+  if(lang==='plaintext') return {status:'none'};
+  try { return {status:'ok', formatted: await prettierFormat(text, lang)}; }
+  catch(e){
+    if(e.isLoadError) return {status:'unavailable', msg:e.message};
+    const msg = String(e.message || e).split('\n')[0].replace(/\s*\(\d+:\d+\)\s*$/,'');
+    const l = e.loc && e.loc.start;
+    return {status:'error', msg, line:l?l.line:null, col:l?(l.column||1):null};
+  }
+}
+function detect(text){
+  const s = text.trim();
+  if(!s) return 'json';
+  if(s[0]==='{' || s[0]==='[') return 'json';
+  if(s[0]==='<') return /^<!doctype html|^<html|<(head|body|div|span|p|script|section|main|a)\b/i.test(s) ? 'html' : 'xml';
+  if(!window.hljs) return 'plaintext';
+  const r = hljs.highlightAuto(s.slice(0,4000), ['javascript','typescript','css','scss','yaml','markdown']);
+  return r.language && r.relevance >= 4 ? r.language : 'plaintext';
+}
+function curLang(){
+  if(state.lang!=='auto') return state.lang;
+  return detect(P.a.ta.value.trim() ? P.a.ta.value : P.b.ta.value);
+}
+function showDetected(){
+  const d = $('#detected');
+  if(state.lang==='auto' && (P.a.ta.value.trim() || P.b.ta.value.trim())){ d.hidden = false; d.textContent = 'Detected: ' + LABEL[curLang()]; }
+  else d.hidden = true;
+}
+
+async function validate(p){
+  const seq = ++p.seq, lang = curLang(), text = p.ta.value;
+  if(text.trim() && PLUG[lang]){ p.res = {status:'loading', lang}; renderStatus(p); }
+  const r = await check(text, lang);
+  if(seq!==p.seq) return r;
+  p.res = {...r, lang}; renderStatus(p); p.lines = -1; updateGutter(p);
+  return p.res;
+}
+const ICON_ERR = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.2v4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.4" r="1" fill="currentColor"/></svg>';
+function renderStatus(p){
+  const r = p.res, L = LABEL[r.lang] || '';
+  const map = {ok:['Valid '+L,'ok'], error:['Syntax error','bad'], empty:['Empty','idle'], none:['Not checked','idle'], loading:['Checking…','idle'], unavailable:['Checker offline','warn']};
+  const [t,c] = map[r.status] || map.empty;
+  p.chip.textContent = t; p.chip.className = 'chip ' + c;
+  if(r.status==='error'){
+    p.err.className = 'perr';
+    p.err.innerHTML = `${ICON_ERR}<div><strong>Invalid ${esc(L)}${r.line?` at line ${r.line}, column ${r.col}`:''}</strong><p>${esc(r.msg)}</p></div>${r.line?'<button class="btn goto">Go to error</button>':''}`;
+    p.err.hidden = false;
+    const g = p.err.querySelector('.goto'); if(g) g.onclick = () => jump(p, r.line, r.col);
+  } else if(r.status==='unavailable'){
+    p.err.className = 'perr warn'; p.err.innerHTML = `${ICON_ERR}<div><strong>Syntax check unavailable</strong><p>${esc(r.msg)}</p></div>`; p.err.hidden = false;
+  } else p.err.hidden = true;
+}
+function jump(p, line, col){
+  const lines = p.ta.value.split('\n'); let off = 0;
+  for(let i=0;i<line-1 && i<lines.length;i++) off += lines[i].length + 1;
+  off += Math.max(0, (col||1) - 1);
+  p.ed.scrollIntoView({block:'nearest'});
+  p.ta.focus({preventScroll:true}); p.ta.setSelectionRange(off, off);
+  p.ta.scrollTop = Math.max(0, (line-1)*LH - p.ta.clientHeight/2);
+  syncScroll(p);
+}
+
+/* ---------- editor chrome ---------- */
+function updateGutter(p){
+  const n = (p.ta.value.match(/\n/g) || []).length + 1;
+  const el = p.res.status==='error' ? p.res.line : null;
+  if(n!==p.lines || el!==p.errLine){
+    p.lines = n; p.errLine = el;
+    const parts = new Array(n);
+    for(let i=1;i<=n;i++) parts[i-1] = i===el ? `<b>${i}</b>` : i;
+    p.gut.innerHTML = parts.join('\n');
+  }
+  syncScroll(p);
+}
+function syncScroll(p){
+  p.gut.scrollTop = p.ta.scrollTop;
+  if(p.errLine){
+    p.band.hidden = false;
+    p.band.style.left = p.gut.offsetWidth + 'px';
+    p.band.style.top = (PADT + (p.errLine-1)*LH - p.ta.scrollTop) + 'px';
+  } else p.band.hidden = true;
+}
+function setText(p, v){
+  let ok = false;
+  if(v.length < 300000){
+    p.ta.focus({preventScroll:true}); p.ta.select();
+    try { ok = document.execCommand('insertText', false, v); } catch(e){}
+  }
+  if(!ok || p.ta.value!==v) p.ta.value = v;
+  p.ta.setSelectionRange(0,0); p.ta.scrollTop = 0; p.ta.scrollLeft = 0;
+  changed(p, true);
+}
+
+/* ---------- change scheduling ---------- */
+let diffTimer = 0, saveTimer = 0;
+function changed(p, now){
+  if(state.example){ state.example = false; P.a.ex.hidden = P.b.ex.hidden = true; }
+  updateGutter(p);
+  state.expanded.clear();
+  clearTimeout(p.vt);
+  p.vt = setTimeout(() => {
+    const L = curLang();
+    if(L!==state.lastLang){ state.lastLang = L; showDetected(); validate(P.a); validate(P.b); }
+    else { showDetected(); validate(p); }
+  }, now ? 0 : 350);
+  clearTimeout(diffTimer); diffTimer = setTimeout(renderDiff, now ? 0 : 220);
+  save();
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify({a:P.a.ta.value, b:P.b.ta.value, lang:state.lang, indent:state.indent, ignoreWs:state.ignoreWs, sortKeys:state.sortKeys, view:state.view, wrap:state.wrap})); } catch(e){} }, 500);
+}
+
+/* ---------- beautify ---------- */
+async function beautify(p, silent){
+  const text = p.ta.value;
+  if(!text.trim()){ if(!silent) toast(`${p.name} is empty. Paste something first.`); return 'empty'; }
+  const lang = curLang();
+  p.seq++;
+  const r = await check(text, lang);
+  p.res = {...r, lang}; renderStatus(p); p.lines = -1; updateGutter(p);
+  if(r.status==='error'){
+    toast(`${p.name} has invalid ${LABEL[lang]}${r.line?` on line ${r.line}`:''}. Fix it, then beautify again.`, 'bad');
+    return 'error';
+  }
+  if(r.status==='unavailable'){ toast(r.msg, 'bad'); return 'error'; }
+  let out;
+  if(lang==='json') out = printJSON(r.ast, ind(), state.sortKeys);
+  else if(lang==='xml') out = formatXML(text, ind());
+  else if(lang==='plaintext') out = text.replace(/\r\n?/g,'\n').replace(/[ \t]+$/gm,'');
+  else out = r.formatted;
+  out = out.replace(/\s+$/,'');
+  if(out!==text) setText(p, out);
+  if(!silent) toast(`${p.name} beautified as ${LABEL[lang]}`);
+  return 'ok';
+}
+async function beautifyBoth(){
+  const [a,b] = [await beautify(P.a,true), await beautify(P.b,true)];
+  if(a!=='error' && b!=='error' && (a==='ok'||b==='ok')) toast(`Beautified both sides as ${LABEL[curLang()]}`);
+  else if(a==='empty' && b==='empty') toast('Both panes are empty. Paste something first.');
+}
+
+/* ---------- diff ---------- */
+function splitHtmlLines(html){
+  const out = []; const stack = []; let cur = '', m;
+  const re = /(<span[^>]*>)|(<\/span>)|(\n)|([^<\n]+)/g;
+  while((m = re.exec(html))){
+    if(m[1]){ stack.push(m[1]); cur += m[1]; }
+    else if(m[2]){ stack.pop(); cur += m[2]; }
+    else if(m[3]){ out.push(cur + '</span>'.repeat(stack.length)); cur = stack.join(''); }
+    else cur += m[4];
+  }
+  out.push(cur);
+  return out;
+}
+function highlightLines(text, lang){
+  const lines = text.split('\n');
+  const hl = HL[lang];
+  if(window.hljs && hl && text.length < 1500000){
+    try {
+      const h = splitHtmlLines(hljs.highlight(text, {language:hl, ignoreIllegals:true}).value);
+      if(h.length===lines.length) return h;
+    } catch(e){}
+  }
+  return lines.map(esc);
+}
+function intra(a, b){
+  if(a.length + b.length > 4000) return null;
+  const parts = Diff.diffWordsWithSpace(a, b); let same = 0;
+  for(const p of parts) if(!p.added && !p.removed) same += p.value.length;
+  if(a.length + b.length && 2*same/(a.length+b.length) < 0.3) return null;
+  let L = '', R = '';
+  for(const p of parts){
+    const v = esc(p.value);
+    if(p.added) R += `<mark class="ins">${v}</mark>`;
+    else if(p.removed) L += `<mark class="rm">${v}</mark>`;
+    else { L += v; R += v; }
+  }
+  return [L, R];
+}
+function renderDiff(){
+  const box = $('#diff'), stats = $('#stats'), hint = $('#hint');
+  if(!window.Diff){ box.innerHTML = '<div class="empty"><strong>The diff engine did not load</strong>Check your connection and reload the page.</div>'; return; }
+  const A = P.a.ta.value.replace(/\r\n?/g,'\n'), B = P.b.ta.value.replace(/\r\n?/g,'\n');
+  box.classList.toggle('nowrap', !state.wrap);
+  if(!A.trim() && !B.trim()){
+    box.innerHTML = '<div class="empty"><strong>Nothing to compare yet</strong>Paste the original on the left and the new version on the right.</div>';
+    stats.innerHTML = ''; hint.hidden = true; state.count = 0; navText(); return;
+  }
+  const la = A==='' ? [] : A.split('\n'), lb = B==='' ? [] : B.split('\n');
+  const norm = state.ignoreWs ? s => s.replace(/\s+/g,' ').trim() : s => s;
+  const parts = Diff.diffArrays(la.map(norm), lb.map(norm));
+  const blocks = []; let i = 0, j = 0, added = 0, removed = 0;
+  for(const p of parts){
+    const c = p.count ?? p.value.length;
+    if(!p.added && !p.removed){ const pairs = []; for(let k=0;k<c;k++) pairs.push([i+k, j+k]); blocks.push({t:'eq', pairs}); i += c; j += c; }
+    else {
+      let last = blocks[blocks.length-1];
+      if(!last || last.t!=='chg'){ last = {t:'chg', del:[], add:[]}; blocks.push(last); }
+      if(p.removed){ for(let k=0;k<c;k++) last.del.push(i+k); i += c; removed += c; }
+      else { for(let k=0;k<c;k++) last.add.push(j+k); j += c; added += c; }
+    }
+  }
+  const lang = curLang();
+  const ha = highlightLines(A, lang), hb = highlightLines(B, lang);
+  const hasChg = blocks.some(b => b.t==='chg');
+  const split = state.view==='split';
+  const rows = []; let chg = 0;
+  const L = n => n===null ? '<td class="ln emp"></td><td class="sg emp"></td><td class="cd emp"></td>' : null;
+  const eqRow = ([x,y]) => split
+    ? `<tr><td class="ln">${x+1}</td><td class="sg"></td><td class="cd">${ha[x]}</td><td class="ln">${y+1}</td><td class="sg"></td><td class="cd">${hb[y]}</td></tr>`
+    : `<tr><td class="ln">${x+1}</td><td class="ln">${y+1}</td><td class="sg"></td><td class="cd">${ha[x]}</td></tr>`;
+  blocks.forEach((b, bi) => {
+    if(b.t==='eq'){
+      const n = b.pairs.length; let h0 = n, h1 = n;
+      if(hasChg && !state.expanded.has(bi)){
+        const head = bi===0 ? 0 : CONTEXT, tail = bi===blocks.length-1 ? 0 : CONTEXT;
+        if(n - head - tail >= 4){ h0 = head; h1 = n - tail; }
+      }
+      for(let k=0;k<h0;k++) rows.push(eqRow(b.pairs[k]));
+      if(h1>h0){
+        const f = b.pairs[h0], t = b.pairs[h1-1];
+        rows.push(`<tr class="fold"><td colspan="${split?6:4}"><button data-fold="${bi}">⋯ Show ${h1-h0} unchanged lines <span>${f[0]+1}–${t[0]+1}</span></button></td></tr>`);
+      }
+      for(let k=Math.max(h1,h0);k<n;k++) rows.push(eqRow(b.pairs[k]));
+    } else {
+      const n = Math.max(b.del.length, b.add.length), pairs = [];
+      for(let k=0;k<n;k++){
+        const x = b.del[k] ?? null, y = b.add[k] ?? null;
+        pairs.push(x!==null && y!==null ? intra(la[x], lb[y]) : null);
+      }
+      const tag = `data-chg="${chg}"`;
+      if(split){
+        for(let k=0;k<n;k++){
+          const x = b.del[k] ?? null, y = b.add[k] ?? null, w = pairs[k];
+          const left = L(x) || `<td class="ln del">${x+1}</td><td class="sg del">−</td><td class="cd del">${w?w[0]:ha[x]}</td>`;
+          const right = L(y) || `<td class="ln add">${y+1}</td><td class="sg add">+</td><td class="cd add">${w?w[1]:hb[y]}</td>`;
+          rows.push(`<tr ${k===0?tag:''}>${left}${right}</tr>`);
+        }
+      } else {
+        let first = true;
+        b.del.forEach((x,k) => { const w = pairs[k]; rows.push(`<tr ${first?tag:''}><td class="ln del">${x+1}</td><td class="ln del"></td><td class="sg del">−</td><td class="cd del">${w?w[0]:ha[x]}</td></tr>`); first = false; });
+        b.add.forEach((y,k) => { const w = pairs[k]; rows.push(`<tr ${first?tag:''}><td class="ln add"></td><td class="ln add">${y+1}</td><td class="sg add">+</td><td class="cd add">${w?w[1]:hb[y]}</td></tr>`); first = false; });
+      }
+      chg++;
+    }
+  });
+  const cols = split
+    ? '<col class="ln"><col class="sg"><col><col class="ln"><col class="sg"><col>'
+    : '<col class="ln"><col class="ln"><col class="sg"><col>';
+  box.innerHTML = `<table class="d ${split?'split':'inline'}"><colgroup>${cols}</colgroup><tbody>${rows.join('')}</tbody></table>`;
+  state.count = chg; state.cur = -1; navText();
+  stats.innerHTML = hasChg
+    ? `<span class="pill add">+${added}</span><span class="pill del">−${removed}</span><span>${chg} change${chg===1?'':'s'}${state.ignoreWs?' · whitespace ignored':''}</span>`
+    : `<span class="pill same">Identical${state.ignoreWs?' (ignoring whitespace)':''}</span>`;
+  const oneLine = la.length<=1 && lb.length<=1 && (A.length>200 || B.length>200) && hasChg && lang!=='plaintext';
+  if(oneLine){
+    hint.innerHTML = '<span>Both sides are on a single line, so the whole line shows as changed. Beautify them to compare line by line.</span><button class="btn" id="hintBeautify">Beautify both</button>';
+    hint.hidden = false; $('#hintBeautify').onclick = beautifyBoth;
+  } else hint.hidden = true;
+}
+function navText(){
+  $('#navpos').textContent = !state.count ? 'No changes' : state.cur<0 ? `${state.count} change${state.count===1?'':'s'}` : `${state.cur+1} of ${state.count}`;
+  $('#prev').disabled = $('#next').disabled = !state.count;
+}
+function go(dir){
+  if(!state.count) return;
+  state.cur = state.cur<0 ? (dir>0 ? 0 : state.count-1) : (state.cur + dir + state.count) % state.count;
+  const box = $('#diff');
+  box.querySelectorAll('tr.cur').forEach(r => r.classList.remove('cur'));
+  const row = box.querySelector(`tr[data-chg="${state.cur}"]`);
+  if(row){
+    row.classList.add('cur');
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    row.scrollIntoView({block:'center', behavior:smooth?'smooth':'auto'});
+  }
+  navText();
+}
+
+/* ---------- toast ---------- */
+let toastT = 0;
+function toast(msg, kind){
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (kind==='bad' ? ' bad' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', 3200);
+}
+
+/* ---------- wiring ---------- */
+Object.values(P).forEach(p => {
+  p.ta.addEventListener('input', () => changed(p));
+  p.ta.addEventListener('scroll', () => syncScroll(p));
+  p.ta.addEventListener('keydown', e => {
+    if(e.key==='Escape'){ p.tabOut = true; return; }
+    if(e.key==='Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !p.tabOut){
+      e.preventDefault();
+      if(!document.execCommand('insertText', false, ind())){
+        const s = p.ta.selectionStart; p.ta.setRangeText(ind(), s, p.ta.selectionEnd, 'end'); changed(p);
+      }
+      return;
+    }
+    p.tabOut = false;
+    if(e.altKey && e.shiftKey && e.code==='KeyF'){ e.preventDefault(); beautify(p); }
+  });
+  p.file.addEventListener('change', () => { const f = p.file.files[0]; if(f) readFile(p, f); p.file.value = ''; });
+  p.ed.addEventListener('dragover', e => { if([...e.dataTransfer.types].includes('Files')){ e.preventDefault(); p.ed.classList.add('drop'); } });
+  p.ed.addEventListener('dragleave', () => p.ed.classList.remove('drop'));
+  p.ed.addEventListener('drop', e => { p.ed.classList.remove('drop'); const f = e.dataTransfer.files[0]; if(f){ e.preventDefault(); readFile(p, f); } });
+  new ResizeObserver(() => syncScroll(p)).observe(p.ed);
+});
+function readFile(p, f){
+  if(f.size > 8e6){ toast(`${f.name} is larger than 8 MB. Pick a smaller file.`, 'bad'); return; }
+  const r = new FileReader();
+  r.onload = () => { p.ta.value = String(r.result); p.ta.scrollTop = 0; changed(p, true); toast(`Loaded ${f.name} into ${p.name}`); };
+  r.onerror = () => toast(`Could not read ${f.name}`, 'bad');
+  r.readAsText(f);
+}
+document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
+  const p = P[b.dataset.p], act = b.dataset.act;
+  if(act==='beautify') beautify(p);
+  else if(act==='open') p.file.click();
+  else if(act==='clear'){ p.ta.value = ''; changed(p, true); p.ta.focus(); }
+  else if(act==='copy'){
+    const v = p.ta.value;
+    if(!v){ toast(`${p.name} is empty`); return; }
+    const fallback = () => { p.ta.focus(); p.ta.select(); toast('Text selected. Press Ctrl+C or Cmd+C to copy.'); };
+    try { navigator.clipboard.writeText(v).then(() => toast(`Copied ${p.name}`), fallback); } catch(e){ fallback(); }
+  }
+}));
+$('#beautifyBoth').onclick = beautifyBoth;
+$('#swap').onclick = () => {
+  const a = P.a.ta.value; P.a.ta.value = P.b.ta.value; P.b.ta.value = a;
+  changed(P.a, true); changed(P.b, true); toast('Swapped Original and Modified');
+};
+$('#lang').onchange = e => { state.lang = e.target.value; state.lastLang = curLang(); showDetected(); validate(P.a); validate(P.b); renderDiff(); save(); };
+$('#indent').onchange = e => { state.indent = e.target.value; save(); toast('Indent applies the next time you beautify'); };
+$('#sortKeys').onchange = e => { state.sortKeys = e.target.checked; save(); };
+$('#ignoreWs').onchange = e => { state.ignoreWs = e.target.checked; renderDiff(); save(); };
+$('#wrap').onchange = e => { state.wrap = e.target.checked; renderDiff(); save(); };
+function setView(v){ state.view = v; $('#vSplit').setAttribute('aria-pressed', v==='split'); $('#vInline').setAttribute('aria-pressed', v==='inline'); renderDiff(); save(); }
+$('#vSplit').onclick = () => setView('split');
+$('#vInline').onclick = () => setView('inline');
+$('#prev').onclick = () => go(-1);
+$('#next').onclick = () => go(1);
+$('#diff').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if(b){ state.expanded.add(+b.dataset.fold); renderDiff(); } });
+document.addEventListener('keydown', e => { if(e.key==='F7'){ e.preventDefault(); go(e.shiftKey ? -1 : 1); } });
+$('#loadExample').onclick = () => { loadExample(); toast('Loaded the example responses'); };
+
+/* ---------- example ---------- */
+const EX_A = `{
+  "orderId": "ORD-20481",
+  "status": "processing",
+  "createdAt": "2026-10-08T09:14:22Z",
+  "customer": {
+    "id": 88412,
+    "name": "Ananya Rao",
+    "email": "ananya.rao@example.com",
+    "tier": "silver"
+  },
+  "items": [
+    {
+      "sku": "KB-104",
+      "name": "Mechanical keyboard",
+      "qty": 1,
+      "price": 4999
+    },
+    {
+      "sku": "MS-220",
+      "name": "Wireless mouse",
+      "qty": 2,
+      "price": 1299
+    }
+  ],
+  "shipping": {
+    "method": "standard",
+    "city": "Pune",
+    "pincode": "411001",
+    "etaDays": 5
+  },
+  "subtotal": 7597,
+  "discount": 0,
+  "total": 7597,
+  "currency": "INR"
+}`;
+const EX_B = `{
+  "orderId": "ORD-20481",
+  "status": "shipped",
+  "createdAt": "2026-10-08T09:14:22Z",
+  "shippedAt": "2026-10-09T16:40:05Z",
+  "customer": {
+    "id": 88412,
+    "name": "Ananya Rao",
+    "email": "ananya.rao@example.com",
+    "tier": "gold"
+  },
+  "items": [
+    {
+      "sku": "KB-104",
+      "name": "Mechanical keyboard",
+      "qty": 1,
+      "price": 4999
+    },
+    {
+      "sku": "MS-220",
+      "name": "Wireless mouse",
+      "qty": 1,
+      "price": 1299
+    },
+    {
+      "sku": "PD-310",
+      "name": "USB-C hub",
+      "qty": 1,
+      "price": 2499
+    }
+  ],
+  "shipping": {
+    "method": "express",
+    "city": "Pune",
+    "pincode": "411001",
+    "etaDays": 2,
+    "trackingId": "PNQ8841203"
+  },
+  "subtotal": 8797,
+  "discount": 500,
+  "total": 8297,
+  "currency": "INR"
+}`;
+function loadExample(){
+  P.a.ta.value = EX_A; P.b.ta.value = EX_B;
+  changed(P.a, true); changed(P.b, true);
+  state.example = true; P.a.ex.hidden = P.b.ex.hidden = false;
+}
+
+/* ---------- boot ---------- */
+let saved = null;
+try { saved = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch(e){}
+if(saved && (saved.a || saved.b)){
+  Object.assign(state, {lang:saved.lang||'auto', indent:saved.indent||'2', ignoreWs:!!saved.ignoreWs, sortKeys:!!saved.sortKeys, view:saved.view||state.view, wrap:saved.wrap!==false});
+  P.a.ta.value = saved.a || ''; P.b.ta.value = saved.b || '';
+  $('#lang').value = state.lang; $('#indent').value = state.indent;
+  $('#ignoreWs').checked = state.ignoreWs; $('#sortKeys').checked = state.sortKeys; $('#wrap').checked = state.wrap;
+  changed(P.a, true); changed(P.b, true);
+} else loadExample();
+$('#vSplit').setAttribute('aria-pressed', state.view==='split'); $('#vInline').setAttribute('aria-pressed', state.view==='inline');
+renderDiff();
+})();
+</script>
+</body>
+</html>
