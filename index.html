@@ -41,6 +41,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans)}
 .wrap{max-width:1500px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;display:flex;flex-direction:column;gap:16px}
 @media (max-width:600px){.wrap{padding-inline:16px}}
@@ -78,8 +79,13 @@ kbd{font:500 11px/1 var(--mono);border:1px solid var(--line-strong);border-botto
 @media (max-width:760px){.tsep{display:none}.tactions{margin-left:0}}
 
 /* panes */
-.inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-@media (max-width:900px){.inputs{grid-template-columns:minmax(0,1fr)}}
+.inputs{display:grid;grid-template-columns:minmax(0,var(--ca,1fr)) 16px minmax(0,var(--cb,1fr))}
+.vsplit{display:flex;align-items:center;justify-content:center;cursor:col-resize;touch-action:none;border-radius:6px}
+.vsplit::before{content:"";width:4px;height:48px;border-radius:4px;background:var(--line-strong);transition:background .12s,height .12s}
+.vsplit:hover::before,.vsplit.drag::before,.vsplit:focus-visible::before{background:var(--accent);height:84px}
+.vsplit:focus-visible{outline:none}
+@media (max-width:900px){.inputs{grid-template-columns:minmax(0,1fr);gap:16px}.vsplit{display:none}}
+body.resizing,body.resizing *{cursor:col-resize!important;user-select:none!important}
 .pane{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
 .phead{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 12px;flex-wrap:wrap}
 .pname{display:flex;align-items:center;gap:8px;margin-right:auto}
@@ -120,6 +126,7 @@ kbd{font:500 11px/1 var(--mono);border:1px solid var(--line-strong);border-botto
 .pill.add{background:var(--add-bg);color:var(--add-fg)}
 .pill.del{background:var(--del-bg);color:var(--del-fg)}
 .pill.same{background:var(--ok-bg);color:var(--ok);font-family:var(--sans)}
+.pill.info{background:var(--accent-soft);color:var(--accent);font-family:var(--sans)}
 .rctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
 .seg button{border:0;background:var(--surface);padding:5px 11px;font-size:12.5px;font-weight:500;color:var(--muted)}
@@ -129,26 +136,48 @@ kbd{font:500 11px/1 var(--mono);border:1px solid var(--line-strong);border-botto
 .nav .btn{padding:4px 7px;display:grid;place-items:center}
 .nav span{min-width:4.6rem;text-align:center;font-variant-numeric:tabular-nums}
 .hint{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;background:var(--warn-bg);color:var(--warn);font-size:13px;border-bottom:1px solid var(--line)}
-.diffwrap{overflow-x:auto;border-radius:0 0 10px 10px}
+.diffwrap{position:relative;overflow-x:auto;border-radius:0 0 10px 10px}
+.dsplit{position:absolute;top:0;bottom:0;width:11px;margin-left:-5px;cursor:col-resize;touch-action:none;z-index:3}
+.dsplit::before{content:"";position:absolute;left:5px;top:0;bottom:0;width:1px;background:transparent;transition:background .12s}
+.dsplit:hover::before,.dsplit.drag::before{background:var(--accent);width:2px;left:4.5px}
+.dsplit i{position:absolute;top:12px;left:2px;width:7px;height:34px;border-radius:4px;background:var(--surface);border:1px solid var(--line-strong)}
+.dsplit:hover i,.dsplit.drag i,.dsplit:focus-visible i{border-color:var(--accent);background:var(--accent-soft)}
+.dsplit:focus-visible{outline:none}
+.halves{display:grid}
+.half{overflow-x:auto;min-width:0}
+.half+.half{border-left:1px solid var(--line)}
 .empty{padding:48px 16px;text-align:center;color:var(--muted)}
 .empty strong{display:block;color:var(--fg);font-size:15px;margin-bottom:4px}
 table.d{width:100%;border-collapse:collapse;table-layout:fixed;font:12.5px/20px var(--mono)}
 .nowrap table.d{table-layout:auto;width:max-content;min-width:100%}
-table.d col.ln{width:3.4rem}
-table.d col.sg{width:1.4rem}
-table.d td{padding:0;vertical-align:top}
+table.d col.fd{width:18px}
+table.d col.ln{width:52px}
+table.d col.sg{width:20px}
+table.d td{padding:0;vertical-align:top;height:20px}
+td.fd{text-align:center;user-select:none}
+td.fd.del{background:var(--del-ln)} td.fd.add{background:var(--add-ln)}
+.fb{display:grid;place-items:center;width:18px;height:20px;padding:0;border:0;border-radius:3px;background:transparent;color:var(--muted);opacity:0;cursor:pointer}
+.fb svg{transition:transform .12s}
+.fb.on{opacity:1;color:var(--accent)}
+.fb.on svg{transform:rotate(-90deg)}
+tr:hover .fb,.fb:focus-visible{opacity:1}
+.fb:hover{background:var(--surface-2);color:var(--fg)}
+@media (hover:none){.fb{opacity:.7}}
 td.ln{text-align:right;padding:0 8px 0 4px;color:var(--muted);user-select:none;font-variant-numeric:tabular-nums}
 td.sg{text-align:center;user-select:none;font-weight:500}
 td.cd{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;padding:0 14px 0 2px}
 .nowrap td.cd{white-space:pre}
-table.split td:nth-child(4){border-left:1px solid var(--line)}
+table.split td:nth-child(5){border-left:1px solid var(--line)}
 td.del{background:var(--del-bg)} td.ln.del{background:var(--del-ln);color:var(--del-fg)} td.sg.del{color:var(--del-fg)}
 td.add{background:var(--add-bg)} td.ln.add{background:var(--add-ln);color:var(--add-fg)} td.sg.add{color:var(--add-fg)}
 td.emp{background:repeating-linear-gradient(-45deg,var(--hatch) 0 1px,transparent 1px 7px),var(--surface)}
 mark.rm{background:var(--del-strong);color:inherit;border-radius:2px}
 mark.ins{background:var(--add-strong);color:inherit;border-radius:2px}
 tr.cur>td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
-tr.fold td{background:var(--fold-bg);border-block:1px solid var(--line)}
+tr.fold td{background:var(--fold-bg);border-block:1px solid var(--line);height:28px}
+tr.bfold td{background:var(--accent-soft)}
+tr.bfold button{color:var(--fg)}
+.fchg{font-style:normal;font:500 11px/1 var(--sans);color:var(--accent-fg);background:var(--accent);border-radius:999px;padding:3px 8px}
 tr.fold button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:3px 14px;font:12px/20px var(--mono);color:var(--accent)}
 tr.fold button:hover{text-decoration:underline}
 tr.fold button span{color:var(--muted)}
@@ -185,6 +214,7 @@ body{margin:0}
       <span><kbd>F7</kbd> next change</span>
       <span><kbd>Shift</kbd> <kbd>F7</kbd> previous</span>
       <span><kbd>Shift</kbd> <kbd>Alt</kbd> <kbd>F</kbd> beautify pane</span>
+      <span><kbd>Alt</kbd> <kbd>[</kbd> <kbd>]</kbd> fold / unfold all</span>
       <button class="btn ghost" id="loadExample">Load example</button>
     </div>
   </header>
@@ -214,10 +244,13 @@ body{margin:0}
       </select>
     </label>
     <span class="tsep"></span>
-    <label class="check"><input type="checkbox" id="sortKeys"> Sort JSON keys on beautify</label>
+    <label class="check" title="When you paste or open JSON, reorder Modified's keys and array items to follow Original"><input type="checkbox" id="autoAlign" checked> Auto-match order to Original</label>
+    <label class="check"><input type="checkbox" id="sortKeys"> Sort keys A–Z on beautify</label>
     <label class="check"><input type="checkbox" id="ignoreWs"> Ignore whitespace</label>
+    <label class="check"><input type="checkbox" id="syncScroll" checked> Sync scroll</label>
     <div class="tactions">
       <button class="btn" id="swap">Swap sides</button>
+      <button class="btn" id="alignBtn" title="Reorder Modified (JSON) to follow Original">Match order</button>
       <button class="btn primary" id="beautifyBoth">Beautify both</button>
     </div>
   </div>
@@ -242,6 +275,8 @@ body{margin:0}
       <div class="perr" id="err-a" role="alert" hidden></div>
       <input type="file" id="file-a" hidden>
     </article>
+
+    <div class="vsplit" id="splitIn" role="separator" aria-orientation="vertical" aria-label="Resize panels" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" tabindex="0" title="Drag to resize. Double-click to reset."></div>
 
     <article class="pane" id="pane-b">
       <div class="phead">
@@ -273,6 +308,10 @@ body{margin:0}
           <button id="vInline" aria-pressed="false">Inline</button>
         </div>
         <label class="check"><input type="checkbox" id="wrap" checked> Wrap lines</label>
+        <div class="seg" role="group" aria-label="Folding">
+          <button id="foldAll" title="Fold every block one level below the top">Fold all</button>
+          <button id="unfoldAll">Unfold all</button>
+        </div>
         <div class="nav">
           <button class="btn" id="prev" title="Previous change (Shift+F7)" aria-label="Previous change"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
           <span id="navpos">–</span>
@@ -291,7 +330,7 @@ body{margin:0}
 <script>
 (function(){
 const $ = s => document.querySelector(s);
-const LH = 20, PADT = 10, CONTEXT = 3;
+const LH = 20, PADT = 10, CONTEXT = 3, FIXED = 90; /* fold 18 + line no 52 + sign 20 */
 const LABEL = {json:'JSON',javascript:'JavaScript',typescript:'TypeScript',html:'HTML',xml:'XML',css:'CSS',scss:'SCSS',yaml:'YAML',markdown:'Markdown',plaintext:'Plain text'};
 const HL = {json:'json',javascript:'javascript',typescript:'typescript',html:'xml',xml:'xml',css:'css',scss:'scss',yaml:'yaml',markdown:'markdown'};
 const PJS = 'https://cdn.jsdelivr.net/npm/prettier@3.3.3/';
@@ -299,12 +338,16 @@ const PLUG = {javascript:['babel','estree'],typescript:['typescript','estree'],c
 const PARSER = {javascript:'babel',typescript:'typescript',css:'css',scss:'scss',html:'html',yaml:'yaml',markdown:'markdown'};
 const STORE = 'diffbench.v1';
 
-const state = {lang:'auto',indent:'2',ignoreWs:false,sortKeys:false,view:innerWidth<720?'inline':'split',wrap:true,expanded:new Set(),cur:-1,count:0,lastLang:null,example:false};
+const state = {lang:'auto',indent:'2',ignoreWs:false,sortKeys:false,autoAlign:true,syncScroll:true,ratio:.5,
+  view:innerWidth<720?'inline':'split',wrap:true,expanded:new Set(),folds:new Set(),cur:-1,count:0,lastLang:null,example:false,aligned:false,
+  ranges:null,hiddenBy:new Map()};
 const P = {};
 ['a','b'].forEach(k => P[k] = {k, name:k==='a'?'Original':'Modified', ta:$('#ta-'+k), gut:$('#gut-'+k), band:$('#band-'+k), chip:$('#chip-'+k), err:$('#err-'+k), file:$('#file-'+k), ed:$('#ed-'+k), ex:$('#ex-'+k), res:{status:'empty'}, seq:0, lines:-1, errLine:null, tabOut:false, vt:0});
+const other = p => p.k==='a' ? P.b : P.a;
 
 const esc = s => s.replace(/[&<>]/g, c => c==='&'?'&amp;':c==='<'?'&lt;':'&gt;');
 const ind = () => state.indent==='tab' ? '\t' : ' '.repeat(+state.indent);
+const plural = (n, w) => `${n} ${w}${n===1?'':'s'}`;
 function lineCol(src, pos){ pos = Math.max(0, Math.min(pos ?? src.length, src.length)); let line=1, last=-1; for(let i=0;i<pos;i++) if(src.charCodeAt(i)===10){line++; last=i;} return {line, col:pos-last}; }
 
 /* ---------- strict JSON parser (keeps raw numbers, reports line/column) ---------- */
@@ -410,6 +453,63 @@ function printJSON(node, I, sort, lvl=0){
   if(sort) props = [...props].sort((a,b) => a[0]<b[0]?-1:a[0]>b[0]?1:0);
   if(!props.length) return '{}';
   return '{\n' + props.map(([k,v]) => pad + k + ': ' + printJSON(v,I,sort,lvl+1)).join(',\n') + '\n' + end + '}';
+}
+
+/* ---------- match Modified's order to Original (JSON) ---------- */
+const keyName = raw => { try { return JSON.parse(raw); } catch(e){ return raw; } };
+function sortAst(n){
+  if(n.t==='obj') return {t:'obj', props:[...n.props].sort((a,b) => a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([k,v]) => [k, sortAst(v)])};
+  if(n.t==='arr') return {t:'arr', items:n.items.map(sortAst)};
+  return n;
+}
+/* Place each entry at its reference position; entries the reference lacks stay right after the entry before them. */
+function orderBy(entries){
+  let last = -1;
+  entries.forEach((e, i) => { e.i = i; if(e.o!=null){ last = e.o; e.s = e.o; } else e.s = last + 0.5; });
+  return entries.sort((a,b) => a.s-b.s || a.i-b.i);
+}
+const ID_KEYS = ['id','_id','uuid','guid','key','sku','code','slug','email','username','name','title'];
+function fieldVal(o, k){ for(const [rk,v] of o.props) if(keyName(rk)===k) return v.t==='lit' ? v.raw : undefined; return undefined; }
+function idField(T, R){
+  const seen = new Set(), cands = [];
+  for(const [rk] of R[0].props){ const k = keyName(rk); if(!seen.has(k)){ seen.add(k); cands.push(k); } }
+  const rank = k => { const i = ID_KEYS.indexOf(k); return i>=0 ? i : /(^|_)id$|Id$|ID$/.test(k) ? ID_KEYS.length : ID_KEYS.length+1; };
+  cands.sort((a,b) => rank(a)-rank(b));
+  for(const k of cands){
+    const tv = T.map(o => fieldVal(o,k)), rv = R.map(o => fieldVal(o,k));
+    if(tv.includes(undefined) || rv.includes(undefined)) continue;
+    if(new Set(tv).size!==tv.length || new Set(rv).size!==rv.length) continue;
+    const rs = new Set(rv), hits = tv.filter(v => rs.has(v)).length;
+    if(hits && hits >= Math.min(tv.length, rv.length)/2) return k;
+  }
+  return null;
+}
+function alignNode(t, r, keysOnly){
+  if(!r || t.t!==r.t || t.t==='lit') return t;
+  if(t.t==='obj'){
+    const rIdx = new Map(), rVal = new Map();
+    r.props.forEach(([k,v], i) => { const n = keyName(k); if(!rIdx.has(n)){ rIdx.set(n,i); rVal.set(n,v); } });
+    const e = t.props.map(([k,v]) => { const n = keyName(k); return {k, v:alignNode(v, rVal.get(n), keysOnly), o:rIdx.has(n)?rIdx.get(n):null}; });
+    return {t:'obj', props:orderBy(e).map(x => [x.k, x.v])};
+  }
+  const T = t.items, R = r.items;
+  if(!T.length || !R.length) return t;
+  if(keysOnly) return {t:'arr', items:T.map((n,i) => alignNode(n, R[Math.min(i,R.length-1)], true))};
+  if(T.every(n => n.t==='lit') && R.every(n => n.t==='lit')){
+    const pos = new Map();
+    R.forEach((n,i) => { if(!pos.has(n.raw)) pos.set(n.raw, []); pos.get(n.raw).push(i); });
+    const e = T.map(n => { const q = pos.get(n.raw); return {v:n, o:q && q.length ? q.shift() : null}; });
+    return {t:'arr', items:orderBy(e).map(x => x.v)};
+  }
+  if(T.every(n => n.t==='obj') && R.every(n => n.t==='obj')){
+    const id = idField(T, R);
+    if(id){
+      const rIdx = new Map(); R.forEach((n,i) => rIdx.set(fieldVal(n,id), i));
+      const e = T.map(n => { const i = rIdx.get(fieldVal(n,id)); return {v:alignNode(n, i!=null?R[i]:R[0], i==null), o:i!=null?i:null}; });
+      return {t:'arr', items:orderBy(e).map(x => x.v)};
+    }
+  }
+  return {t:'arr', items:T.map((n,i) => alignNode(n, R[i] || R[R.length-1], !R[i]))};
 }
 
 /* ---------- XML ---------- */
@@ -564,6 +664,7 @@ function changed(p, now){
   if(state.example){ state.example = false; P.a.ex.hidden = P.b.ex.hidden = true; }
   updateGutter(p);
   state.expanded.clear();
+  for(const k of [...state.folds]) if(k[0]===p.k) state.folds.delete(k);
   clearTimeout(p.vt);
   p.vt = setTimeout(() => {
     const L = curLang();
@@ -575,7 +676,7 @@ function changed(p, now){
 }
 function save(){
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify({a:P.a.ta.value, b:P.b.ta.value, lang:state.lang, indent:state.indent, ignoreWs:state.ignoreWs, sortKeys:state.sortKeys, view:state.view, wrap:state.wrap})); } catch(e){} }, 500);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify({a:P.a.ta.value, b:P.b.ta.value, lang:state.lang, indent:state.indent, ignoreWs:state.ignoreWs, sortKeys:state.sortKeys, autoAlign:state.autoAlign, syncScroll:state.syncScroll, ratio:state.ratio, view:state.view, wrap:state.wrap})); } catch(e){} }, 500);
 }
 
 /* ---------- beautify ---------- */
@@ -592,7 +693,11 @@ async function beautify(p, silent){
   }
   if(r.status==='unavailable'){ toast(r.msg, 'bad'); return 'error'; }
   let out;
-  if(lang==='json') out = printJSON(r.ast, ind(), state.sortKeys);
+  if(lang==='json'){
+    let ast = r.ast;
+    if(p.k==='b' && state.autoAlign){ const ra = await check(P.a.ta.value, 'json'); if(ra.status==='ok') ast = alignNode(state.sortKeys ? sortAst(ast) : ast, state.sortKeys ? sortAst(ra.ast) : ra.ast); }
+    out = printJSON(ast, ind(), state.sortKeys);
+  }
   else if(lang==='xml') out = formatXML(text, ind());
   else if(lang==='plaintext') out = text.replace(/\r\n?/g,'\n').replace(/[ \t]+$/gm,'');
   else out = r.formatted;
@@ -606,6 +711,68 @@ async function beautifyBoth(){
   if(a!=='error' && b!=='error' && (a==='ok'||b==='ok')) toast(`Beautified both sides as ${LABEL[curLang()]}`);
   else if(a==='empty' && b==='empty') toast('Both panes are empty. Paste something first.');
 }
+
+/* Reformat both sides and reorder Modified to follow Original. Returns a message, or null when nothing applies. */
+async function matchOrder(manual){
+  const A = P.a.ta.value, B = P.b.ta.value;
+  if(!A.trim() || !B.trim()){ if(manual) toast('Paste JSON in both panes to match their order.'); return; }
+  if(curLang()!=='json'){ if(manual) toast(`Matching order works for JSON. The panes contain ${LABEL[curLang()]}.`); return; }
+  const ra = await check(A,'json'), rb = await check(B,'json');
+  if(ra.status!=='ok' || rb.status!=='ok'){
+    if(manual){ const bad = ra.status!=='ok' ? P.a : P.b, r = bad===P.a ? ra : rb; toast(`${bad.name} has invalid JSON${r.line?` on line ${r.line}`:''}. Fix it to match order.`, 'bad'); }
+    return;
+  }
+  const I = ind();
+  const refAst = state.sortKeys ? sortAst(ra.ast) : ra.ast;
+  const baseB = state.sortKeys ? sortAst(rb.ast) : rb.ast;
+  const outA = printJSON(refAst, I, false);
+  const plainB = printJSON(baseB, I, false);
+  const outB = printJSON(alignNode(baseB, refAst), I, false);
+  const reordered = outB!==plainB;
+  if(outA!==A) setText(P.a, outA);
+  if(outB!==B) setText(P.b, outB);
+  state.aligned = reordered;
+  renderDiff();
+  if(reordered) toast('Reordered Modified to match Original. Press Ctrl+Z (Cmd+Z) in the pane to undo.');
+  else if(manual) toast('Modified already follows Original\'s order');
+  else if(outA!==A || outB!==B) toast('Formatted both sides for comparison');
+}
+let alignTimer = 0;
+function scheduleAlign(){ if(!state.autoAlign) return; clearTimeout(alignTimer); alignTimer = setTimeout(() => matchOrder(false), 60); }
+
+/* ---------- folding ---------- */
+function indentOf(s){
+  let w = 0;
+  for(const c of s){ if(c===' ') w++; else if(c==='\t') w += 4; else return w; }
+  return -1;
+}
+/* Indentation-based ranges, like VS Code: a block is the run of deeper-indented lines after a line. */
+function foldRanges(lines){
+  const map = new Map(), stack = [];
+  let prev = -1;
+  const close = (top, end) => { if(end > top.line) map.set(top.line, {end, depth:top.depth}); };
+  for(let i=0;i<lines.length;i++){
+    const w = indentOf(lines[i]);
+    if(w<0) continue;
+    while(stack.length && stack[stack.length-1].w >= w) close(stack.pop(), prev);
+    stack.push({line:i, w, depth:stack.length});
+    prev = i;
+  }
+  while(stack.length) close(stack.pop(), prev);
+  return map;
+}
+function foldAll(){
+  const R = state.ranges; if(!R) return;
+  for(const side of ['a','b']){
+    const map = R[side], total = R[side+'n'];
+    const tops = [...map.entries()].filter(([,r]) => r.depth===0);
+    const target = tops.length===1 && (tops[0][1].end - tops[0][0] + 1) >= total*0.8 ? 1 : 0;
+    for(const [line, r] of map) if(r.depth===target) state.folds.add(side+':'+line);
+  }
+  renderDiff();
+  toast(state.folds.size ? `Folded ${plural(state.folds.size,'block')}` : 'There are no blocks to fold');
+}
+function unfoldAll(){ const n = state.folds.size; state.folds.clear(); renderDiff(); if(n) toast('Unfolded everything'); }
 
 /* ---------- diff ---------- */
 function splitHtmlLines(html){
@@ -645,14 +812,18 @@ function intra(a, b){
   }
   return [L, R];
 }
+const CHEV = '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 function renderDiff(){
   const box = $('#diff'), stats = $('#stats'), hint = $('#hint');
   if(!window.Diff){ box.innerHTML = '<div class="empty"><strong>The diff engine did not load</strong>Check your connection and reload the page.</div>'; return; }
   const A = P.a.ta.value.replace(/\r\n?/g,'\n'), B = P.b.ta.value.replace(/\r\n?/g,'\n');
+  const split = state.view==='split', halves = split && !state.wrap;
   box.classList.toggle('nowrap', !state.wrap);
+  state.hiddenBy = new Map();
   if(!A.trim() && !B.trim()){
     box.innerHTML = '<div class="empty"><strong>Nothing to compare yet</strong>Paste the original on the left and the new version on the right.</div>';
-    stats.innerHTML = ''; hint.hidden = true; state.count = 0; navText(); return;
+    stats.innerHTML = ''; hint.hidden = true; state.count = 0; state.ranges = null; navText(); return;
   }
   const la = A==='' ? [] : A.split('\n'), lb = B==='' ? [] : B.split('\n');
   const norm = state.ignoreWs ? s => s.replace(/\s+/g,' ').trim() : s => s;
@@ -670,76 +841,198 @@ function renderDiff(){
   }
   const lang = curLang();
   const ha = highlightLines(A, lang), hb = highlightLines(B, lang);
+  const RA = foldRanges(la), RB = foldRanges(lb);
+  state.ranges = {a:RA, b:RB, an:la.length, bn:lb.length};
   const hasChg = blocks.some(b => b.t==='chg');
-  const split = state.view==='split';
-  const rows = []; let chg = 0;
-  const L = n => n===null ? '<td class="ln emp"></td><td class="sg emp"></td><td class="cd emp"></td>' : null;
-  const eqRow = ([x,y]) => split
-    ? `<tr><td class="ln">${x+1}</td><td class="sg"></td><td class="cd">${ha[x]}</td><td class="ln">${y+1}</td><td class="sg"></td><td class="cd">${hb[y]}</td></tr>`
-    : `<tr><td class="ln">${x+1}</td><td class="ln">${y+1}</td><td class="sg"></td><td class="cd">${ha[x]}</td></tr>`;
+
+  /* 1. rows */
+  const rows = []; let ci = 0;
   blocks.forEach((b, bi) => {
-    if(b.t==='eq'){
-      const n = b.pairs.length; let h0 = n, h1 = n;
-      if(hasChg && !state.expanded.has(bi)){
-        const head = bi===0 ? 0 : CONTEXT, tail = bi===blocks.length-1 ? 0 : CONTEXT;
-        if(n - head - tail >= 4){ h0 = head; h1 = n - tail; }
-      }
-      for(let k=0;k<h0;k++) rows.push(eqRow(b.pairs[k]));
-      if(h1>h0){
-        const f = b.pairs[h0], t = b.pairs[h1-1];
-        rows.push(`<tr class="fold"><td colspan="${split?6:4}"><button data-fold="${bi}">⋯ Show ${h1-h0} unchanged lines <span>${f[0]+1}–${t[0]+1}</span></button></td></tr>`);
-      }
-      for(let k=Math.max(h1,h0);k<n;k++) rows.push(eqRow(b.pairs[k]));
-    } else {
-      const n = Math.max(b.del.length, b.add.length), pairs = [];
-      for(let k=0;k<n;k++){
-        const x = b.del[k] ?? null, y = b.add[k] ?? null;
-        pairs.push(x!==null && y!==null ? intra(la[x], lb[y]) : null);
-      }
-      const tag = `data-chg="${chg}"`;
-      if(split){
-        for(let k=0;k<n;k++){
-          const x = b.del[k] ?? null, y = b.add[k] ?? null, w = pairs[k];
-          const left = L(x) || `<td class="ln del">${x+1}</td><td class="sg del">−</td><td class="cd del">${w?w[0]:ha[x]}</td>`;
-          const right = L(y) || `<td class="ln add">${y+1}</td><td class="sg add">+</td><td class="cd add">${w?w[1]:hb[y]}</td>`;
-          rows.push(`<tr ${k===0?tag:''}>${left}${right}</tr>`);
-        }
-      } else {
-        let first = true;
-        b.del.forEach((x,k) => { const w = pairs[k]; rows.push(`<tr ${first?tag:''}><td class="ln del">${x+1}</td><td class="ln del"></td><td class="sg del">−</td><td class="cd del">${w?w[0]:ha[x]}</td></tr>`); first = false; });
-        b.add.forEach((y,k) => { const w = pairs[k]; rows.push(`<tr ${first?tag:''}><td class="ln add"></td><td class="ln add">${y+1}</td><td class="sg add">+</td><td class="cd add">${w?w[1]:hb[y]}</td></tr>`); first = false; });
-      }
-      chg++;
+    if(b.t==='eq'){ b.pairs.forEach(([x,y]) => rows.push({x, y, eq:true, bi})); return; }
+    const n = Math.max(b.del.length, b.add.length), ws = [];
+    for(let k=0;k<n;k++){ const x = b.del[k], y = b.add[k]; ws[k] = x!=null && y!=null ? intra(la[x], lb[y]) : null; }
+    if(split) for(let k=0;k<n;k++) rows.push({x:b.del[k] ?? null, y:b.add[k] ?? null, w:ws[k], cb:ci, first:k===0});
+    else {
+      b.del.forEach((x,k) => rows.push({x, y:null, w:ws[k], cb:ci, first:k===0}));
+      b.add.forEach((y,k) => rows.push({x:null, y, w:ws[k], cb:ci, first:!b.del.length && k===0}));
     }
+    ci++;
   });
-  const cols = split
-    ? '<col class="ln"><col class="sg"><col><col class="ln"><col class="sg"><col>'
-    : '<col class="ln"><col class="ln"><col class="sg"><col>';
-  box.innerHTML = `<table class="d ${split?'split':'inline'}"><colgroup>${cols}</colgroup><tbody>${rows.join('')}</tbody></table>`;
-  state.count = chg; state.cur = -1; navText();
-  stats.innerHTML = hasChg
-    ? `<span class="pill add">+${added}</span><span class="pill del">−${removed}</span><span>${chg} change${chg===1?'':'s'}${state.ignoreWs?' · whitespace ignored':''}</span>`
-    : `<span class="pill same">Identical${state.ignoreWs?' (ignoring whitespace)':''}</span>`;
+  const rowOfA = new Array(la.length), rowOfB = new Array(lb.length);
+  rows.forEach((r, n) => { if(r.x!=null) rowOfA[r.x] = n; if(r.y!=null) rowOfB[r.y] = n; });
+
+  /* 2. unchanged runs to collapse */
+  const coll = new Array(rows.length).fill(null);
+  if(hasChg){
+    let s = 0;
+    while(s < rows.length){
+      if(!rows[s].eq){ s++; continue; }
+      let e = s; while(e+1 < rows.length && rows[e+1].eq) e++;
+      const bi = rows[s].bi, n = e - s + 1;
+      if(!state.expanded.has(bi)){
+        const head = s===0 ? 0 : CONTEXT, tail = e===rows.length-1 ? 0 : CONTEXT;
+        if(n - head - tail >= 4){ const c = {from:s+head, to:e-tail, bi}; for(let k=c.from;k<=c.to;k++) coll[k] = c; }
+      }
+      s = e + 1;
+    }
+  }
+
+  /* 3. cell builders */
+  const fdCell = (side, line, cls) => {
+    const rg = line==null ? null : (side==='a' ? RA : RB).get(line);
+    if(!rg) return `<td class="fd ${cls}"></td>`;
+    const key = side+':'+line, on = state.folds.has(key);
+    return `<td class="fd ${cls}"><button class="fb${on?' on':''}" data-f="${key}" aria-expanded="${!on}" aria-label="${on?'Unfold':'Fold'} lines ${line+1}–${rg.end+1}">${CHEV}</button></td>`;
+  };
+  const leftCells = r => {
+    if(r.x==null) return '<td class="fd emp"></td><td class="ln emp"></td><td class="sg emp"></td><td class="cd emp"></td>';
+    const c = r.eq ? '' : 'del';
+    return `${fdCell('a', r.x, c)}<td class="ln ${c}">${r.x+1}</td><td class="sg ${c}">${c?'−':''}</td><td class="cd ${c}">${!r.eq && r.w ? r.w[0] : ha[r.x]}</td>`;
+  };
+  const rightCells = r => {
+    if(r.y==null) return '<td class="fd emp"></td><td class="ln emp"></td><td class="sg emp"></td><td class="cd emp"></td>';
+    const c = r.eq ? '' : 'add';
+    return `${fdCell('b', r.y, c)}<td class="ln ${c}">${r.y+1}</td><td class="sg ${c}">${c?'+':''}</td><td class="cd ${c}">${!r.eq && r.w ? r.w[1] : hb[r.y]}</td>`;
+  };
+  const inlineCells = r => {
+    if(r.eq) return `${fdCell('a', r.x, '')}<td class="ln">${r.x+1}</td><td class="ln">${r.y+1}</td><td class="sg"></td><td class="cd">${ha[r.x]}</td>`;
+    if(r.x!=null) return `${fdCell('a', r.x, 'del')}<td class="ln del">${r.x+1}</td><td class="ln del"></td><td class="sg del">−</td><td class="cd del">${r.w ? r.w[0] : ha[r.x]}</td>`;
+    return `${fdCell('b', r.y, 'add')}<td class="ln add"></td><td class="ln add">${r.y+1}</td><td class="sg add">+</td><td class="cd add">${r.w ? r.w[1] : hb[r.y]}</td>`;
+  };
+
+  /* 4. walk rows, applying folds */
+  const L = [], Rt = [];   /* left/right halves (halves mode) or full rows in L */
+  const span = halves ? 4 : split ? 8 : 5;
+  const push = (attrs, l, r) => { if(halves){ L.push(`<tr${attrs}>${l}</tr>`); Rt.push(`<tr${attrs}>${r}</tr>`); } else L.push(`<tr${attrs}>${l}${r||''}</tr>`); };
+  const pushWide = (cls, inner) => { const td = `<td colspan="${span}">${inner}</td>`; if(halves){ L.push(`<tr class="${cls}">${td}</tr>`); Rt.push(`<tr class="${cls}">${td}</tr>`); } else L.push(`<tr class="${cls}">${td}</tr>`); };
+  let r = 0, foldedN = 0;
+  while(r < rows.length){
+    const c = coll[r];
+    if(c){
+      const n = c.to - r + 1, f = rows[r], t = rows[c.to];
+      pushWide('fold', `<button data-fold="${c.bi}">⋯ Show ${plural(n,'unchanged line')} <span>${f.x+1}–${t.x+1}</span></button>`);
+      r = c.to + 1; continue;
+    }
+    const row = rows[r];
+    const attrs = row.first ? ` data-chg="${row.cb}"` : '';
+    if(split) push(attrs, leftCells(row), rightCells(row)); else push(attrs, inlineCells(row));
+    /* block folds starting on this row */
+    let end = r; const keys = [];
+    const sides = split ? [['a', row.x], ['b', row.y]] : [[row.x!=null ? 'a' : 'b', row.x!=null ? row.x : row.y]];
+    for(const [side, line] of sides){
+      if(line==null) continue;
+      const key = side+':'+line; if(!state.folds.has(key)) continue;
+      const rg = (side==='a' ? RA : RB).get(line); if(!rg) continue;
+      const er = (side==='a' ? rowOfA : rowOfB)[rg.end];
+      if(er > r){ end = Math.max(end, er); keys.push(key); }
+    }
+    if(end > r){
+      const cbs = new Set();
+      for(let k=r+1;k<=end;k++){ const h = rows[k]; if(h.cb!=null){ cbs.add(h.cb); if(h.first){ const prev = state.hiddenBy.get(h.cb) || []; state.hiddenBy.set(h.cb, prev.concat(keys)); } } }
+      const n = end - r; foldedN++;
+      pushWide('fold bfold', `<button data-unf="${keys.join(',')}">⋯ ${plural(n,'line')} folded${cbs.size?` <em class="fchg">${plural(cbs.size,'change')} inside</em>`:''} <span>Click to unfold</span></button>`);
+      r = end + 1; continue;
+    }
+    r++;
+  }
+
+  const colsSide = '<col class="fd"><col class="ln"><col class="sg"><col class="cd">';
+  if(halves){
+    box.innerHTML = `<div class="halves"><div class="half" id="hL"><table class="d"><colgroup>${colsSide}</colgroup><tbody>${L.join('')}</tbody></table></div><div class="half" id="hR"><table class="d"><colgroup>${colsSide}</colgroup><tbody>${Rt.join('')}</tbody></table></div></div>`;
+    const hL = $('#hL'), hR = $('#hR'); let lock = false;
+    const link = (a, b) => a.addEventListener('scroll', () => { if(lock) return; lock = true; b.scrollLeft = a.scrollLeft; requestAnimationFrame(() => lock = false); });
+    link(hL, hR); link(hR, hL);
+  } else if(split){
+    box.innerHTML = `<table class="d split"><colgroup><col class="fd"><col class="ln"><col class="sg"><col class="cd cdL"><col class="fd"><col class="ln"><col class="sg"><col class="cd"></colgroup><tbody>${L.join('')}</tbody></table>`;
+  } else {
+    box.innerHTML = `<table class="d inline"><colgroup><col class="fd"><col class="ln"><col class="ln"><col class="sg"><col class="cd"></colgroup><tbody>${L.join('')}</tbody></table>`;
+  }
+  if(split){
+    const h = document.createElement('div');
+    h.className = 'dsplit'; h.id = 'dsplit'; h.tabIndex = 0; h.setAttribute('role','separator'); h.setAttribute('aria-orientation','vertical');
+    h.setAttribute('aria-label','Resize Original and Modified columns'); h.title = 'Drag to resize. Double-click to reset.';
+    h.innerHTML = '<i></i>';
+    box.appendChild(h); makeSplitter(h, box);
+  }
+  layoutDiff();
+
+  state.count = ci; state.cur = -1; navText();
+  stats.innerHTML = (hasChg
+    ? `<span class="pill add">+${added}</span><span class="pill del">−${removed}</span><span>${plural(ci,'change')}${state.ignoreWs?' · whitespace ignored':''}</span>`
+    : `<span class="pill same">Identical${state.ignoreWs?' (ignoring whitespace)':''}</span>`)
+    + (state.aligned ? '<span class="pill info">Order matched to Original</span>' : '')
+    + (foldedN ? `<span>${plural(foldedN,'folded block')}</span>` : '');
   const oneLine = la.length<=1 && lb.length<=1 && (A.length>200 || B.length>200) && hasChg && lang!=='plaintext';
   if(oneLine){
     hint.innerHTML = '<span>Both sides are on a single line, so the whole line shows as changed. Beautify them to compare line by line.</span><button class="btn" id="hintBeautify">Beautify both</button>';
     hint.hidden = false; $('#hintBeautify').onclick = beautifyBoth;
   } else hint.hidden = true;
 }
+
+/* ---------- resizable panels ---------- */
+function applyRatio(){
+  const r = state.ratio, ins = $('.inputs');
+  ins.style.setProperty('--ca', r+'fr'); ins.style.setProperty('--cb', (1-r)+'fr');
+  const pct = Math.round(r*100);
+  $('#splitIn').setAttribute('aria-valuenow', pct);
+  const d = $('#dsplit'); if(d) d.setAttribute('aria-valuenow', pct);
+  layoutDiff();
+}
+function layoutDiff(){
+  const box = $('#diff'), h = $('#dsplit');
+  if(!h) return;
+  const W = box.clientWidth, r = state.ratio;
+  if(state.wrap){ const c = box.querySelector('col.cdL'); if(c) c.style.width = Math.max(60, r*W - FIXED) + 'px'; }
+  else { const hv = box.querySelector('.halves'); if(hv) hv.style.gridTemplateColumns = `minmax(0,${r}fr) minmax(0,${1-r}fr)`; }
+  h.style.left = (r*W) + 'px';
+}
+function setRatio(r){ state.ratio = Math.min(.8, Math.max(.2, r)); applyRatio(); save(); }
+function makeSplitter(el, area){
+  el.addEventListener('pointerdown', e => {
+    if(e.button!==0) return;
+    e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('drag'); document.body.classList.add('resizing');
+    const move = ev => { const b = area.getBoundingClientRect(); setRatio((ev.clientX - b.left) / b.width); };
+    const up = () => { el.classList.remove('drag'); document.body.classList.remove('resizing'); el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+    el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  });
+  el.addEventListener('dblclick', () => { setRatio(.5); toast('Panels reset to equal width'); });
+  el.addEventListener('keydown', e => {
+    const step = e.shiftKey ? .1 : .02;
+    if(e.key==='ArrowLeft'){ e.preventDefault(); setRatio(state.ratio - step); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); setRatio(state.ratio + step); }
+    else if(e.key==='Home'){ e.preventDefault(); setRatio(.2); }
+    else if(e.key==='End'){ e.preventDefault(); setRatio(.8); }
+  });
+}
+makeSplitter($('#splitIn'), $('.inputs'));
+new ResizeObserver(() => layoutDiff()).observe($('#diff'));
+
+/* keep both editors the same height */
+let sizing = false;
+Object.values(P).forEach(p => new ResizeObserver(() => {
+  if(sizing) return;
+  const o = other(p), hp = p.ed.offsetHeight;
+  if(Math.abs(o.ed.offsetHeight - hp) > 1){ sizing = true; o.ed.style.height = hp + 'px'; requestAnimationFrame(() => sizing = false); }
+  syncScroll(p);
+}).observe(p.ed));
+
 function navText(){
-  $('#navpos').textContent = !state.count ? 'No changes' : state.cur<0 ? `${state.count} change${state.count===1?'':'s'}` : `${state.cur+1} of ${state.count}`;
+  $('#navpos').textContent = !state.count ? 'No changes' : state.cur<0 ? plural(state.count,'change') : `${state.cur+1} of ${state.count}`;
   $('#prev').disabled = $('#next').disabled = !state.count;
 }
 function go(dir){
   if(!state.count) return;
   state.cur = state.cur<0 ? (dir>0 ? 0 : state.count-1) : (state.cur + dir + state.count) % state.count;
+  const cur = state.cur;
+  for(let guard=0; guard<50 && state.hiddenBy.has(cur); guard++){ state.hiddenBy.get(cur).forEach(k => state.folds.delete(k)); renderDiff(); }
+  state.cur = cur;
   const box = $('#diff');
   box.querySelectorAll('tr.cur').forEach(r => r.classList.remove('cur'));
-  const row = box.querySelector(`tr[data-chg="${state.cur}"]`);
-  if(row){
-    row.classList.add('cur');
+  const rows = box.querySelectorAll(`tr[data-chg="${cur}"]`);
+  rows.forEach(r => r.classList.add('cur'));
+  if(rows[0]){
     const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    row.scrollIntoView({block:'center', behavior:smooth?'smooth':'auto'});
+    rows[0].scrollIntoView({block:'center', behavior:smooth?'smooth':'auto'});
   }
   navText();
 }
@@ -748,13 +1041,25 @@ function go(dir){
 let toastT = 0;
 function toast(msg, kind){
   const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (kind==='bad' ? ' bad' : '');
-  clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', 3200);
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', 3400);
 }
 
 /* ---------- wiring ---------- */
+let scrollLock = false;
 Object.values(P).forEach(p => {
-  p.ta.addEventListener('input', () => changed(p));
-  p.ta.addEventListener('scroll', () => syncScroll(p));
+  p.ta.addEventListener('input', e => {
+    if(p.k==='b') state.aligned = false;
+    changed(p);
+    if(e.inputType==='insertFromPaste' || e.inputType==='insertFromDrop') scheduleAlign();
+  });
+  p.ta.addEventListener('scroll', () => {
+    syncScroll(p);
+    if(state.syncScroll && !scrollLock){
+      const o = other(p); scrollLock = true;
+      o.ta.scrollTop = p.ta.scrollTop; syncScroll(o);
+      requestAnimationFrame(() => scrollLock = false);
+    }
+  });
   p.ta.addEventListener('keydown', e => {
     if(e.key==='Escape'){ p.tabOut = true; return; }
     if(e.key==='Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !p.tabOut){
@@ -771,12 +1076,11 @@ Object.values(P).forEach(p => {
   p.ed.addEventListener('dragover', e => { if([...e.dataTransfer.types].includes('Files')){ e.preventDefault(); p.ed.classList.add('drop'); } });
   p.ed.addEventListener('dragleave', () => p.ed.classList.remove('drop'));
   p.ed.addEventListener('drop', e => { p.ed.classList.remove('drop'); const f = e.dataTransfer.files[0]; if(f){ e.preventDefault(); readFile(p, f); } });
-  new ResizeObserver(() => syncScroll(p)).observe(p.ed);
 });
 function readFile(p, f){
   if(f.size > 8e6){ toast(`${f.name} is larger than 8 MB. Pick a smaller file.`, 'bad'); return; }
   const r = new FileReader();
-  r.onload = () => { p.ta.value = String(r.result); p.ta.scrollTop = 0; changed(p, true); toast(`Loaded ${f.name} into ${p.name}`); };
+  r.onload = () => { p.ta.value = String(r.result); p.ta.scrollTop = 0; if(p.k==='b') state.aligned = false; changed(p, true); toast(`Loaded ${f.name} into ${p.name}`); scheduleAlign(); };
   r.onerror = () => toast(`Could not read ${f.name}`, 'bad');
   r.readAsText(f);
 }
@@ -784,7 +1088,7 @@ document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click',
   const p = P[b.dataset.p], act = b.dataset.act;
   if(act==='beautify') beautify(p);
   else if(act==='open') p.file.click();
-  else if(act==='clear'){ p.ta.value = ''; changed(p, true); p.ta.focus(); }
+  else if(act==='clear'){ p.ta.value = ''; if(p.k==='b') state.aligned = false; changed(p, true); p.ta.focus(); }
   else if(act==='copy'){
     const v = p.ta.value;
     if(!v){ toast(`${p.name} is empty`); return; }
@@ -793,23 +1097,41 @@ document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click',
   }
 }));
 $('#beautifyBoth').onclick = beautifyBoth;
+$('#alignBtn').onclick = () => matchOrder(true);
 $('#swap').onclick = () => {
-  const a = P.a.ta.value; P.a.ta.value = P.b.ta.value; P.b.ta.value = a;
+  const a = P.a.ta.value; P.a.ta.value = P.b.ta.value; P.b.ta.value = a; state.aligned = false;
   changed(P.a, true); changed(P.b, true); toast('Swapped Original and Modified');
 };
 $('#lang').onchange = e => { state.lang = e.target.value; state.lastLang = curLang(); showDetected(); validate(P.a); validate(P.b); renderDiff(); save(); };
 $('#indent').onchange = e => { state.indent = e.target.value; save(); toast('Indent applies the next time you beautify'); };
 $('#sortKeys').onchange = e => { state.sortKeys = e.target.checked; save(); };
+$('#autoAlign').onchange = e => { state.autoAlign = e.target.checked; save(); if(state.autoAlign) matchOrder(false); };
+$('#syncScroll').onchange = e => { state.syncScroll = e.target.checked; save(); };
 $('#ignoreWs').onchange = e => { state.ignoreWs = e.target.checked; renderDiff(); save(); };
 $('#wrap').onchange = e => { state.wrap = e.target.checked; renderDiff(); save(); };
 function setView(v){ state.view = v; $('#vSplit').setAttribute('aria-pressed', v==='split'); $('#vInline').setAttribute('aria-pressed', v==='inline'); renderDiff(); save(); }
 $('#vSplit').onclick = () => setView('split');
 $('#vInline').onclick = () => setView('inline');
+$('#foldAll').onclick = foldAll;
+$('#unfoldAll').onclick = unfoldAll;
 $('#prev').onclick = () => go(-1);
 $('#next').onclick = () => go(1);
-$('#diff').addEventListener('click', e => { const b = e.target.closest('[data-fold]'); if(b){ state.expanded.add(+b.dataset.fold); renderDiff(); } });
-document.addEventListener('keydown', e => { if(e.key==='F7'){ e.preventDefault(); go(e.shiftKey ? -1 : 1); } });
-$('#loadExample').onclick = () => { loadExample(); toast('Loaded the example responses'); };
+$('#diff').addEventListener('click', e => {
+  const f = e.target.closest('[data-f]');
+  if(f){ const k = f.dataset.f; state.folds.has(k) ? state.folds.delete(k) : state.folds.add(k); renderDiff(); const nb = $('#diff').querySelector(`[data-f="${k}"]`); if(nb) nb.focus({preventScroll:true}); return; }
+  const u = e.target.closest('[data-unf]');
+  if(u){ u.dataset.unf.split(',').forEach(k => state.folds.delete(k)); renderDiff(); return; }
+  const b = e.target.closest('[data-fold]');
+  if(b){ state.expanded.add(+b.dataset.fold); renderDiff(); }
+});
+document.addEventListener('keydown', e => {
+  if(e.key==='F7'){ e.preventDefault(); go(e.shiftKey ? -1 : 1); }
+  else if(e.altKey && !e.ctrlKey && !e.metaKey && (e.code==='BracketLeft' || e.code==='BracketRight')){
+    if(document.activeElement && document.activeElement.tagName==='TEXTAREA') return;
+    e.preventDefault(); e.code==='BracketLeft' ? foldAll() : unfoldAll();
+  }
+});
+$('#loadExample').onclick = async () => { await loadExample(); toast('Loaded the example responses'); };
 
 /* ---------- example ---------- */
 const EX_A = `{
@@ -847,67 +1169,34 @@ const EX_A = `{
   "total": 7597,
   "currency": "INR"
 }`;
-const EX_B = `{
-  "orderId": "ORD-20481",
-  "status": "shipped",
-  "createdAt": "2026-10-08T09:14:22Z",
-  "shippedAt": "2026-10-09T16:40:05Z",
-  "customer": {
-    "id": 88412,
-    "name": "Ananya Rao",
-    "email": "ananya.rao@example.com",
-    "tier": "gold"
-  },
-  "items": [
-    {
-      "sku": "KB-104",
-      "name": "Mechanical keyboard",
-      "qty": 1,
-      "price": 4999
-    },
-    {
-      "sku": "MS-220",
-      "name": "Wireless mouse",
-      "qty": 1,
-      "price": 1299
-    },
-    {
-      "sku": "PD-310",
-      "name": "USB-C hub",
-      "qty": 1,
-      "price": 2499
-    }
-  ],
-  "shipping": {
-    "method": "express",
-    "city": "Pune",
-    "pincode": "411001",
-    "etaDays": 2,
-    "trackingId": "PNQ8841203"
-  },
-  "subtotal": 8797,
-  "discount": 500,
-  "total": 8297,
-  "currency": "INR"
-}`;
-function loadExample(){
-  P.a.ta.value = EX_A; P.b.ta.value = EX_B;
+/* Same order, different key order and item order: auto-match lines it up with Original. */
+const EX_B = `{"currency":"INR","orderId":"ORD-20481","status":"shipped","createdAt":"2026-10-08T09:14:22Z","shippedAt":"2026-10-09T16:40:05Z","customer":{"name":"Ananya Rao","tier":"gold","id":88412,"email":"ananya.rao@example.com"},"items":[{"name":"Wireless mouse","sku":"MS-220","price":1299,"qty":1},{"sku":"PD-310","name":"USB-C hub","qty":1,"price":2499},{"price":4999,"qty":1,"sku":"KB-104","name":"Mechanical keyboard"}],"shipping":{"city":"Pune","method":"express","pincode":"411001","etaDays":2,"trackingId":"PNQ8841203"},"total":8297,"subtotal":8797,"discount":500}`;
+async function loadExample(){
+  P.a.ta.value = EX_A; P.b.ta.value = EX_B; state.aligned = false;
   changed(P.a, true); changed(P.b, true);
+  if(state.autoAlign) await matchOrder(false);
+  else { await beautify(P.b, true); }
   state.example = true; P.a.ex.hidden = P.b.ex.hidden = false;
 }
 
 /* ---------- boot ---------- */
 let saved = null;
 try { saved = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch(e){}
-if(saved && (saved.a || saved.b)){
-  Object.assign(state, {lang:saved.lang||'auto', indent:saved.indent||'2', ignoreWs:!!saved.ignoreWs, sortKeys:!!saved.sortKeys, view:saved.view||state.view, wrap:saved.wrap!==false});
-  P.a.ta.value = saved.a || ''; P.b.ta.value = saved.b || '';
-  $('#lang').value = state.lang; $('#indent').value = state.indent;
-  $('#ignoreWs').checked = state.ignoreWs; $('#sortKeys').checked = state.sortKeys; $('#wrap').checked = state.wrap;
-  changed(P.a, true); changed(P.b, true);
-} else loadExample();
+if(saved){
+  Object.assign(state, {lang:saved.lang||'auto', indent:saved.indent||'2', ignoreWs:!!saved.ignoreWs, sortKeys:!!saved.sortKeys,
+    autoAlign:saved.autoAlign!==false, syncScroll:saved.syncScroll!==false, ratio:typeof saved.ratio==='number' ? saved.ratio : .5,
+    view:saved.view||state.view, wrap:saved.wrap!==false});
+}
+$('#lang').value = state.lang; $('#indent').value = state.indent;
+$('#ignoreWs').checked = state.ignoreWs; $('#sortKeys').checked = state.sortKeys; $('#wrap').checked = state.wrap;
+$('#autoAlign').checked = state.autoAlign; $('#syncScroll').checked = state.syncScroll;
 $('#vSplit').setAttribute('aria-pressed', state.view==='split'); $('#vInline').setAttribute('aria-pressed', state.view==='inline');
-renderDiff();
+applyRatio();
+if(saved && (saved.a || saved.b)){
+  P.a.ta.value = saved.a || ''; P.b.ta.value = saved.b || '';
+  changed(P.a, true); changed(P.b, true);
+  renderDiff();
+} else loadExample().then(() => window.scrollTo(0, 0));
 })();
 </script>
 </body>
